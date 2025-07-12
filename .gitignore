@@ -1,11 +1,32 @@
-bin/
-obj/
-.vscode/
-*.user
+# Padrão do VisualStudio
 *.suo
+*.user
+*.userosscache
+*.sln.docstates
+.vs/
+.vscode/
+
+# Pastas de Build
+[Bb]in/
+[Oo]bj/
+
+# Resultados de Teste
+[Tt]est[Rr]esult*/
+
+# Arquivos de log e cache
 *.log
-*.vs/
-*.exe
-*.dll
-*.pdb
 *.cache
+*.tmp
+
+# Banco de Dados Local
+*.db
+*.db-journal
+webmanager.db
+
+# Arquivos de Sistema Operacional
+[Tt]humbs.db
+ehthumbs.db
+[Dd]esktop.ini
+
+# Arquivos de configuração de ambiente
+appsettings.Development.json
