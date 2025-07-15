@@ -1,5 +1,7 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 using WebManager.Data;
 using WebManager.Models;
 
@@ -7,6 +9,7 @@ namespace WebManager.Controllers
 {
     [ApiController]
     [Route("[controller]")]
+    [Authorize]
     public class FinancesController : ControllerBase
     {
         private readonly AppDbContext _context;
@@ -20,18 +23,30 @@ namespace WebManager.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Finance>>> GetAll()
         {
-            return await _context.Finances.ToListAsync();
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (userId == null)
+            {
+                return Unauthorized();
+            }
+
+            return await _context.Finances.Where(f => f.UserId == int.Parse(userId)).ToListAsync();
         }
 
         // GET: /Finances/5
         [HttpGet("{id}")]
         public async Task<ActionResult<Finance>> GetById(int id)
         {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             var finance = await _context.Finances.FindAsync(id);
 
             if (finance == null)
             {
                 return NotFound();
+            }
+
+            if (finance.UserId != int.Parse(userId!))
+            {
+                return Forbid();
             }
 
             return finance;
@@ -41,6 +56,13 @@ namespace WebManager.Controllers
         [HttpPost]
         public async Task<ActionResult<Finance>> Create(Finance newFinance)
         {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (userId == null)
+            {
+                return Unauthorized();
+            }
+
+            newFinance.UserId = int.Parse(userId);
             _context.Finances.Add(newFinance);
             await _context.SaveChangesAsync();
 
@@ -55,7 +77,21 @@ namespace WebManager.Controllers
             {
                 return BadRequest();
             }
+            
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var finance = await _context.Finances.AsNoTracking().FirstOrDefaultAsync(f => f.Id == id);
 
+            if (finance == null)
+            {
+                return NotFound();
+            }
+
+            if (finance.UserId != int.Parse(userId!))
+            {
+                return Forbid();
+            }
+
+            updatedFinance.UserId = int.Parse(userId);
             _context.Entry(updatedFinance).State = EntityState.Modified;
 
             try
@@ -81,10 +117,17 @@ namespace WebManager.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             var finance = await _context.Finances.FindAsync(id);
+            
             if (finance == null)
             {
                 return NotFound();
+            }
+
+            if (finance.UserId != int.Parse(userId!))
+            {
+                return Forbid();
             }
 
             _context.Finances.Remove(finance);

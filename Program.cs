@@ -1,6 +1,9 @@
 
 using Microsoft.EntityFrameworkCore;
 using WebManager.Data;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -25,6 +28,20 @@ builder.Services.AddCors(options =>
         });
 });
 
+// Configura a autenticação JWT
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII
+                .GetBytes(builder.Configuration.GetSection("AppSettings:Token").Value)),
+            ValidateIssuer = false,
+            ValidateAudience = false
+        };
+    });
+
 var app = builder.Build();
 
 // Configuração do ambiente de desenvolvimento
@@ -39,6 +56,10 @@ app.UseCors("AllowAngularDev");
 
 // HTTPS redirection
 app.UseHttpsRedirection();
+
+// Adiciona o middleware de autenticação
+app.UseAuthentication();
+app.UseAuthorization();
 
 // Aqui mapeia seus controllers
 app.MapControllers();
