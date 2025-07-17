@@ -49,6 +49,23 @@ if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
+
+    // Seed data
+    using (var scope = app.Services.CreateScope())
+    {
+        var services = scope.ServiceProvider;
+        var context = services.GetRequiredService<AppDbContext>();
+        try
+        {
+            context.Database.Migrate();
+        }
+        catch (Exception ex)
+        {
+            // Log the error, but allow the application to continue if it's just a migration issue
+            Console.WriteLine($"Error applying migrations: {ex.Message}");
+        }
+        DataSeeder.SeedData(context);
+    }
 }
 
 // Aplica a política de CORS
