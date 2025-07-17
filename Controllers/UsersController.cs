@@ -31,7 +31,7 @@ namespace WebManager.Controllers
         {
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == loginDto.Email);
 
-            if (user == null || user.Password != loginDto.Password) // Em produção, use hashing e verificação de senha!
+            if (user == null || !BCrypt.Net.BCrypt.Verify(loginDto.Password, user.Password))
             {
                 return Unauthorized();
             }

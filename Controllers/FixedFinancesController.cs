@@ -110,12 +110,13 @@ namespace WebManager.Controllers
             {
                 for (int i = 0; i < fixedFinance.NumberOfMonths; i++)
                 {
-                    var date = new DateTime(DateTime.Now.Year, DateTime.Now.Month, fixedFinance.BillingDay).AddMonths(i);
-                    
-                    // Avoid creating duplicate entries for the same month and year
+                    var targetMonth = fixedFinance.StartDate.AddMonths(i);
+                    var billingDay = Math.Min(fixedFinance.BillingDay, DateTime.DaysInMonth(targetMonth.Year, targetMonth.Month));
+                    var date = new DateTime(targetMonth.Year, targetMonth.Month, billingDay);
+
                     var existingFinance = await _context.Finances.FirstOrDefaultAsync(f =>
                         f.UserId == fixedFinance.UserId &&
-                        f.Description == fixedFinance.Description && // Assuming description + amount + type is unique enough for fixed entries
+                        f.Description == fixedFinance.Description &&
                         f.Amount == fixedFinance.Amount &&
                         f.Type == fixedFinance.Type &&
                         f.Date.Year == date.Year &&

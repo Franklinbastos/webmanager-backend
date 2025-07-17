@@ -26,10 +26,16 @@ namespace WebManager.Controllers
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
             if (userId == null)
             {
+                Console.WriteLine("FinancesController: Unauthorized - UserId is null.");
                 return Unauthorized();
             }
 
-            return await _context.Finances.Where(f => f.UserId == int.Parse(userId)).ToListAsync();
+            var parsedUserId = int.Parse(userId);
+            Console.WriteLine($"FinancesController: Fetching finances for UserId: {parsedUserId}");
+
+            var finances = await _context.Finances.Where(f => f.UserId == parsedUserId).ToListAsync();
+            Console.WriteLine($"FinancesController: Found {finances.Count} finances for UserId: {parsedUserId}");
+            return finances;
         }
 
         // GET: /Finances/5

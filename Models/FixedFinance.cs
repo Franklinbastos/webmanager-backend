@@ -22,6 +22,7 @@ namespace WebManager.Models
         public int NumberOfMonths { get; set; } = 1; // How many months this fixed finance will repeat
         public int BillingDay { get; set; } = 1; // Day of the month (1-31) for billing/income
 
+        public DateTime StartDate { get; set; } = DateTime.Now;
         public bool IsActive { get; set; } = true;
     }
 }

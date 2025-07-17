@@ -3,6 +3,7 @@ using WebManager.Models;
 using System;
 using System.Linq;
 using System.Collections.Generic;
+using BCrypt.Net;
 
 namespace WebManager.Data
 {
@@ -15,65 +16,40 @@ namespace WebManager.Data
             context.Goals.RemoveRange(context.Goals);
             context.FixedFinances.RemoveRange(context.FixedFinances);
             context.Users.RemoveRange(context.Users);
-            context.SaveChanges(); // Save changes after clearing to avoid conflicts
+            context.SaveChanges();
 
-            // Create a default user
-            var defaultUser = new User
+            // Create a user
+            var user = new User
             {
                 Name = "Test User",
                 Email = "test@example.com",
-                Password = BCrypt.Net.BCrypt.HashPassword("password123") // Hash a default password
+                Password = BCrypt.Net.BCrypt.HashPassword("password123")
             };
-            context.Users.Add(defaultUser);
-            context.SaveChanges();
+            context.Users.Add(user);
+            context.SaveChanges(); // Save user to get an ID
+            Console.WriteLine($"DataSeeder: Created user with ID: {user.Id}");
 
-            // Seed Finances
-            var random = new Random();
-            for (int i = 0; i < 30; i++)
+            // Create Goals
+            var goals = new List<Goal>
             {
-                context.Finances.Add(new Finance
-                {
-                    UserId = defaultUser.Id,
-                    Date = DateTime.Now.AddDays(-random.Next(1, 365)),
-                    Description = i % 2 == 0 ? $"Income {i + 1}" : $"Expense {i + 1}",
-                    Amount = (decimal)(random.NextDouble() * 1000 + 50),
-                    Type = i % 2 == 0 ? "income" : "expense"
-                });
-            }
-            context.SaveChanges();
+                new Goal { UserId = user.Id, Item = "Trip to Japan", Value = 10000, Description = "Save for a 2-week trip", Completed = false },
+                new Goal { UserId = user.Id, Item = "New Laptop", Value = 2500, Description = "For work and personal projects", Completed = false },
+                new Goal { UserId = user.Id, Item = "Pay off credit card", Value = 3000, Description = "Clear the balance on the main card", Completed = false }
+            };
+            context.Goals.AddRange(goals);
 
-            // Seed Goals
-            string[] items = { "Laptop", "New Phone", "Vacation", "Car Down Payment", "House Renovation", "Books", "Course", "Bike", "Smartwatch", "Headphones" };
-            string[] descriptions = { "For work", "Latest model", "Trip to Europe", "Future investment", "Kitchen remodel", "Learning new skills", "Professional development", "Commuting", "Fitness tracking", "Noise cancelling" };
-
-            for (int i = 0; i < 30; i++)
+            // Create FixedFinances
+            var fixedFinances = new List<FixedFinance>
             {
-                context.Goals.Add(new Goal
-                {
-                    UserId = defaultUser.Id,
-                    Item = items[random.Next(items.Length)],
-                    Value = (decimal)(random.NextDouble() * 5000 + 100),
-                    Description = descriptions[random.Next(descriptions.Length)],
-                    Completed = random.Next(2) == 1 // 50% chance of being completed
-                });
-            }
-            context.SaveChanges();
-
-            // Seed FixedFinances
-            string[] fixedDescriptions = { "Salary", "Rent", "Car Payment", "Utilities", "Internet", "Phone Bill", "Gym Membership", "Subscription Service" };
-
-            for (int i = 0; i < 30; i++)
-            {
-                context.FixedFinances.Add(new FixedFinance
-                {
-                    UserId = defaultUser.Id,
-                    Description = fixedDescriptions[random.Next(fixedDescriptions.Length)],
-                    Amount = (decimal)(random.NextDouble() * 1000 + 100),
-                    Type = i % 2 == 0 ? "income" : "expense",
-                    IsActive = random.Next(2) == 1
-                });
-            }
-            context.SaveChanges();
+                // Income repeating for 2 months
+                new FixedFinance { UserId = user.Id, Description = "Freelance Project", Amount = 800, Type = "income", NumberOfMonths = 2, BillingDay = 15, StartDate = DateTime.Now, IsActive = true },
+                // Income repeating for 12 months
+                new FixedFinance { UserId = user.Id, Description = "Rental Income", Amount = 1200, Type = "income", NumberOfMonths = 12, BillingDay = 1, StartDate = DateTime.Now, IsActive = true },
+                // Expense repeating for 6 months
+                new FixedFinance { UserId = user.Id, Description = "Car Loan Payment", Amount = 450, Type = "expense", NumberOfMonths = 6, BillingDay = 20, StartDate = DateTime.Now, IsActive = true }
+            };
+            context.FixedFinances.AddRange(fixedFinances);
+            context.SaveChanges(); // Save fixed finances before FinanceService processes them
         }
     }
 }

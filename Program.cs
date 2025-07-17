@@ -1,8 +1,9 @@
 using Microsoft.EntityFrameworkCore;
+using System.Text;
 using WebManager.Data;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
-using System.Text;
+using WebManager.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -10,6 +11,8 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+builder.Services.AddScoped<FinanceService>();
 
 // Configura o DbContext
 builder.Services.AddDbContext<AppDbContext>(options =>
@@ -57,13 +60,24 @@ if (app.Environment.IsDevelopment())
         try
         {
             context.Database.Migrate();
+            Console.WriteLine("Program.cs: Database migrations applied.");
         }
         catch (Exception ex)
         {
             // Log the error, but allow the application to continue if it's just a migration issue
-            Console.WriteLine($"Error applying migrations: {ex.Message}");
+            Console.WriteLine($"Program.cs: Error applying migrations: {ex.Message}");
         }
+        Console.WriteLine("Program.cs: Calling DataSeeder.SeedData...");
         DataSeeder.SeedData(context);
+        Console.WriteLine("Program.cs: DataSeeder.SeedData completed.");
+
+        // Process fixed finances
+        Console.WriteLine("Program.cs: Calling FinanceService.ProcessFixedFinances...");
+        var financeService = services.GetRequiredService<FinanceService>();
+        financeService.ProcessFixedFinances();
+        Console.WriteLine("Program.cs: FinanceService.ProcessFixedFinances completed.");
+
+        Console.WriteLine($"Program.cs: Final count of Finance entries: {context.Finances.Count()}");
     }
 }
 
