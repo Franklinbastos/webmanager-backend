@@ -19,6 +19,9 @@ namespace WebManager.Models
         [RegularExpression("^(income|expense)$", ErrorMessage = "The Type must be either 'income' or 'expense'.")]
         public string Type { get; set; } = "expense"; // "income" ou "expense"
 
+        public int NumberOfMonths { get; set; } = 1; // How many months this fixed finance will repeat
+        public int BillingDay { get; set; } = 1; // Day of the month (1-31) for billing/income
+
         public bool IsActive { get; set; } = true;
     }
 }

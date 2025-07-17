@@ -98,5 +98,51 @@ namespace WebManager.Controllers
         {
             return _context.FixedFinances.Any(e => e.Id == id);
         }
+
+        // POST: api/FixedFinances/generate-recurrent
+        [HttpPost("generate-recurrent")]
+        public async Task<IActionResult> GenerateRecurrentFinances()
+        {
+            var fixedFinances = await _context.FixedFinances.Where(ff => ff.IsActive).ToListAsync();
+            var newFinances = new List<Finance>();
+
+            foreach (var fixedFinance in fixedFinances)
+            {
+                for (int i = 0; i < fixedFinance.NumberOfMonths; i++)
+                {
+                    var date = new DateTime(DateTime.Now.Year, DateTime.Now.Month, fixedFinance.BillingDay).AddMonths(i);
+                    
+                    // Avoid creating duplicate entries for the same month and year
+                    var existingFinance = await _context.Finances.FirstOrDefaultAsync(f =>
+                        f.UserId == fixedFinance.UserId &&
+                        f.Description == fixedFinance.Description && // Assuming description + amount + type is unique enough for fixed entries
+                        f.Amount == fixedFinance.Amount &&
+                        f.Type == fixedFinance.Type &&
+                        f.Date.Year == date.Year &&
+                        f.Date.Month == date.Month);
+
+                    if (existingFinance == null)
+                    {
+                        newFinances.Add(new Finance
+                        {
+                            UserId = fixedFinance.UserId,
+                            Date = date,
+                            Description = fixedFinance.Description,
+                            Amount = fixedFinance.Amount,
+                            Type = fixedFinance.Type
+                        });
+                    }
+                }
+            }
+
+            if (newFinances.Any())
+            {
+                _context.Finances.AddRange(newFinances);
+                await _context.SaveChangesAsync();
+                return Ok(new { message = $"{newFinances.Count} recurrent finance entries generated successfully." });
+            }
+
+            return Ok(new { message = "No new recurrent finance entries to generate." });
+        }
     }
 }
