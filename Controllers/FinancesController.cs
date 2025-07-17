@@ -78,7 +78,13 @@ namespace WebManager.Controllers
                 return BadRequest();
             }
             
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (userIdString == null)
+            {
+                return Unauthorized();
+            }
+            var userId = int.Parse(userIdString);
+
             var finance = await _context.Finances.AsNoTracking().FirstOrDefaultAsync(f => f.Id == id);
 
             if (finance == null)
@@ -86,12 +92,12 @@ namespace WebManager.Controllers
                 return NotFound();
             }
 
-            if (finance.UserId != int.Parse(userId!))
+            if (finance.UserId != userId)
             {
                 return Forbid();
             }
 
-            updatedFinance.UserId = int.Parse(userId);
+            updatedFinance.UserId = userId;
             _context.Entry(updatedFinance).State = EntityState.Modified;
 
             try

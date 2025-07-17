@@ -1,4 +1,3 @@
-
 using Microsoft.EntityFrameworkCore;
 using WebManager.Data;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -36,7 +35,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         {
             ValidateIssuerSigningKey = true,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.ASCII
-                .GetBytes(builder.Configuration.GetSection("AppSettings:Token").Value)),
+                .GetBytes(builder.Configuration.GetSection("AppSettings:Token").Value ?? throw new InvalidOperationException("JWT Token not configured."))),
             ValidateIssuer = false,
             ValidateAudience = false
         };

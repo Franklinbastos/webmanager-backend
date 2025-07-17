@@ -37,7 +37,8 @@ namespace WebManager.Controllers
             }
 
             var tokenHandler = new JwtSecurityTokenHandler();
-            var key = Encoding.ASCII.GetBytes(_configuration.GetSection("AppSettings:Token").Value);
+            var tokenValue = _configuration.GetSection("AppSettings:Token").Value ?? throw new InvalidOperationException("JWT Token not configured.");
+            var key = Encoding.ASCII.GetBytes(tokenValue);
             var tokenDescriptor = new SecurityTokenDescriptor
             {
                 Subject = new ClaimsIdentity(new Claim[]
