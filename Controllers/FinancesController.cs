@@ -23,19 +23,25 @@ namespace WebManager.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Finance>>> GetAll()
         {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (userId == null)
+            var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            Console.WriteLine($"FinancesController: Attempting to fetch finances. Raw UserId from token: {userIdString ?? "null"}");
+
+            if (string.IsNullOrEmpty(userIdString))
             {
-                Console.WriteLine("FinancesController: Unauthorized - UserId is null.");
+                Console.WriteLine("FinancesController: Unauthorized - UserId is null or empty.");
                 return Unauthorized();
             }
 
-            var parsedUserId = int.Parse(userId);
+            if (!int.TryParse(userIdString, out var parsedUserId))
+            {
+                Console.WriteLine($"FinancesController: Unauthorized - Could not parse UserId: {userIdString}");
+                return Unauthorized();
+            }
             Console.WriteLine($"FinancesController: Fetching finances for UserId: {parsedUserId}");
 
             var finances = await _context.Finances.Where(f => f.UserId == parsedUserId).ToListAsync();
             Console.WriteLine($"FinancesController: Found {finances.Count} finances for UserId: {parsedUserId}");
-            return finances;
+            return Ok(finances);
         }
 
         // GET: /Finances/5

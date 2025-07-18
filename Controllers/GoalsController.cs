@@ -1,11 +1,14 @@
 
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using WebManager.Data;
 using WebManager.Models;
+using System.Security.Claims;
 
 namespace WebManager.Controllers
 {
+    [Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public class GoalsController : ControllerBase
@@ -21,18 +24,35 @@ namespace WebManager.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Goal>>> GetGoals()
         {
-            return await _context.Goals.ToListAsync();
+            var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userIdString) || !int.TryParse(userIdString, out var userId))
+            {
+                return Unauthorized();
+            }
+
+            return await _context.Goals.Where(g => g.UserId == userId).ToListAsync();
         }
 
         // GET: api/Goals/5
         [HttpGet("{id}")]
         public async Task<ActionResult<Goal>> GetGoal(int id)
         {
+            var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userIdString) || !int.TryParse(userIdString, out var userId))
+            {
+                return Unauthorized();
+            }
+
             var goal = await _context.Goals.FindAsync(id);
 
             if (goal == null)
             {
                 return NotFound();
+            }
+
+            if (goal.UserId != userId)
+            {
+                return Forbid();
             }
 
             return goal;
@@ -42,6 +62,13 @@ namespace WebManager.Controllers
         [HttpPost]
         public async Task<ActionResult<Goal>> PostGoal(Goal goal)
         {
+            var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userIdString) || !int.TryParse(userIdString, out var userId))
+            {
+                return Unauthorized();
+            }
+
+            goal.UserId = userId;
             _context.Goals.Add(goal);
             await _context.SaveChangesAsync();
 
@@ -57,6 +84,24 @@ namespace WebManager.Controllers
                 return BadRequest();
             }
 
+            var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userIdString) || !int.TryParse(userIdString, out var userId))
+            {
+                return Unauthorized();
+            }
+
+            var existingGoal = await _context.Goals.AsNoTracking().FirstOrDefaultAsync(g => g.Id == id);
+            if (existingGoal == null)
+            {
+                return NotFound();
+            }
+
+            if (existingGoal.UserId != userId)
+            {
+                return Forbid();
+            }
+
+            goal.UserId = userId;
             _context.Entry(goal).State = EntityState.Modified;
 
             try
@@ -65,7 +110,7 @@ namespace WebManager.Controllers
             }
             catch (DbUpdateConcurrencyException)
             {
-                if (!GoalExists(id))
+                if (!GoalExists(id, userId))
                 {
                     return NotFound();
                 }
@@ -82,10 +127,21 @@ namespace WebManager.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteGoal(int id)
         {
+            var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userIdString) || !int.TryParse(userIdString, out var userId))
+            {
+                return Unauthorized();
+            }
+
             var goal = await _context.Goals.FindAsync(id);
             if (goal == null)
             {
                 return NotFound();
+            }
+
+            if (goal.UserId != userId)
+            {
+                return Forbid();
             }
 
             _context.Goals.Remove(goal);
@@ -94,9 +150,9 @@ namespace WebManager.Controllers
             return NoContent();
         }
 
-        private bool GoalExists(int id)
+        private bool GoalExists(int id, int userId)
         {
-            return _context.Goals.Any(e => e.Id == id);
+            return _context.Goals.Any(e => e.Id == id && e.UserId == userId);
         }
     }
 }

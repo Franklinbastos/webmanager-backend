@@ -1,11 +1,14 @@
 
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using WebManager.Data;
 using WebManager.Models;
+using System.Security.Claims;
 
 namespace WebManager.Controllers
 {
+    [Authorize]
     [Route("api/[controller]")]
     [ApiController]
     public class FixedFinancesController : ControllerBase
@@ -21,18 +24,35 @@ namespace WebManager.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<FixedFinance>>> GetFixedFinances()
         {
-            return await _context.FixedFinances.ToListAsync();
+            var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userIdString) || !int.TryParse(userIdString, out var userId))
+            {
+                return Unauthorized();
+            }
+
+            return await _context.FixedFinances.Where(ff => ff.UserId == userId).ToListAsync();
         }
 
         // GET: api/FixedFinances/5
         [HttpGet("{id}")]
         public async Task<ActionResult<FixedFinance>> GetFixedFinance(int id)
         {
+            var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userIdString) || !int.TryParse(userIdString, out var userId))
+            {
+                return Unauthorized();
+            }
+
             var fixedFinance = await _context.FixedFinances.FindAsync(id);
 
             if (fixedFinance == null)
             {
                 return NotFound();
+            }
+
+            if (fixedFinance.UserId != userId)
+            {
+                return Forbid();
             }
 
             return fixedFinance;
@@ -42,6 +62,14 @@ namespace WebManager.Controllers
         [HttpPost]
         public async Task<ActionResult<FixedFinance>> PostFixedFinance(FixedFinance fixedFinance)
         {
+            var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userIdString) || !int.TryParse(userIdString, out var userId))
+            {
+                return Unauthorized();
+            }
+
+            fixedFinance.UserId = userId; 
+
             _context.FixedFinances.Add(fixedFinance);
             await _context.SaveChangesAsync();
 
@@ -57,15 +85,37 @@ namespace WebManager.Controllers
                 return BadRequest();
             }
 
+            var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userIdString) || !int.TryParse(userIdString, out var userId))
+            {
+                return Unauthorized();
+            }
+
+            var existingFixedFinance = await _context.FixedFinances.AsNoTracking().FirstOrDefaultAsync(ff => ff.Id == id);
+            if (existingFixedFinance == null)
+            {
+                return NotFound();
+            }
+
+            if (existingFixedFinance.UserId != userId)
+            {
+                return Forbid();
+            }
+
+            fixedFinance.UserId = userId; 
             _context.Entry(fixedFinance).State = EntityState.Modified;
 
             try
             {
                 await _context.SaveChangesAsync();
+
+                
+                var financeService = HttpContext.RequestServices.GetRequiredService<WebManager.Services.FinanceService>();
+                await financeService.ProcessFixedFinanceUpdate(fixedFinance.Id);
             }
             catch (DbUpdateConcurrencyException)
             {
-                if (!FixedFinanceExists(id))
+                if (!FixedFinanceExists(id, userId))
                 {
                     return NotFound();
                 }
@@ -82,10 +132,21 @@ namespace WebManager.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteFixedFinance(int id)
         {
+            var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userIdString) || !int.TryParse(userIdString, out var userId))
+            {
+                return Unauthorized();
+            }
+
             var fixedFinance = await _context.FixedFinances.FindAsync(id);
             if (fixedFinance == null)
             {
                 return NotFound();
+            }
+
+            if (fixedFinance.UserId != userId)
+            {
+                return Forbid();
             }
 
             _context.FixedFinances.Remove(fixedFinance);
@@ -94,16 +155,22 @@ namespace WebManager.Controllers
             return NoContent();
         }
 
-        private bool FixedFinanceExists(int id)
+        private bool FixedFinanceExists(int id, int userId)
         {
-            return _context.FixedFinances.Any(e => e.Id == id);
+            return _context.FixedFinances.Any(e => e.Id == id && e.UserId == userId);
         }
 
         // POST: api/FixedFinances/generate-recurrent
         [HttpPost("generate-recurrent")]
         public async Task<IActionResult> GenerateRecurrentFinances()
         {
-            var fixedFinances = await _context.FixedFinances.Where(ff => ff.IsActive).ToListAsync();
+            var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(userIdString) || !int.TryParse(userIdString, out var userId))
+            {
+                return Unauthorized();
+            }
+
+            var fixedFinances = await _context.FixedFinances.Where(ff => ff.IsActive && ff.UserId == userId).ToListAsync();
             var newFinances = new List<Finance>();
 
             foreach (var fixedFinance in fixedFinances)
@@ -130,7 +197,8 @@ namespace WebManager.Controllers
                             Date = date,
                             Description = fixedFinance.Description,
                             Amount = fixedFinance.Amount,
-                            Type = fixedFinance.Type
+                            Type = fixedFinance.Type,
+                            FixedFinanceId = fixedFinance.Id 
                         });
                     }
                 }

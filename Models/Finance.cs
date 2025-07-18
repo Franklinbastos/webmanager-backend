@@ -19,6 +19,10 @@ namespace WebManager.Models
         [Required]
         [RegularExpression("^(income|expense)$", ErrorMessage = "The Type must be either 'income' or 'expense'.")]
         public string Type { get; set; } = "expense"; // "income" ou "expense"
+
+        // Foreign key for FixedFinance
+        public int? FixedFinanceId { get; set; }
+        public FixedFinance? FixedFinance { get; set; }
     }
 }
 

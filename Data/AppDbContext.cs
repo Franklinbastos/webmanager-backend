@@ -9,9 +9,9 @@ namespace WebManager.Data
         {
         }
 
-        public DbSet<Finance> Finances { get; set; }
-        public DbSet<User> Users { get; set; } // Adicionado
-        public DbSet<Goal> Goals { get; set; }
-        public DbSet<FixedFinance> FixedFinances { get; set; }
+        public virtual DbSet<Finance> Finances { get; set; }
+        public virtual DbSet<User> Users { get; set; } // Adicionado
+        public virtual DbSet<Goal> Goals { get; set; }
+        public virtual DbSet<FixedFinance> FixedFinances { get; set; }
     }
 }
